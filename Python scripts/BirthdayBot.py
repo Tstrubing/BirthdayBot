@@ -1,84 +1,59 @@
 import time
 import os
 from slackclient import SlackClient
+from travisscripts import *
 
 #-----------------------------
-# I have haphazardly stripped out the "next gen" specific info due to a certain someone's impatience.
-# A working update will be posted soon as I have the chance.
+# Current version: BBot V0.5
+# Released: 7/19/2017
+# Written by: Travis Strubing
+#   with help from: Joey Domino
 #-----------------------------
-
-SLACK_TOKEN = ""
 
 birthday_boy = ''
-birthday_list = [{'userid':'', 'day':23, 'month':6}]
-slack_client = SlackClient(SLACK_TOKEN)
-READ_WEBSOCKET_DELAY = 2
-
-#------------------------------
-# This cannot be done by a bot user but I will leave it in for posterity
-#
-#def invite_jeff(post):
-#  if post and 'type' in post:
-#    if post['type'] == 'member_left_channel' and post['user'] == '': #Jeff just left a channel
-#      api_response = slack_client.api_call(
-#        "channels.invite",
-#        channel=post['channel'],
-#        user=post['user']
-#        )
-#------------------------------
-
-def set_birthday_boy(birthdays):
-  date = time.gmtime()
-  for user in birthdays:
-    if user['day'] == date.tm_mday and user['month']==date.tm_mon:
-      birthday_boy = user['userid']
-
-def annoy_pascal(post):
-  if post and 'user' in post and 'text' in post:
-    info = slack_client.api_call(
-      "users.info",
-      user=post['user']
-      )['user']
-    for word in post['text'].split():
-      slack_client.api_call(
-        "chat.postMessage",
-        channel=post['channel'],
-        text=word,
-        username=info['name'],
-        icon_url=info['profile']['image_original']
-        )
-    slack_client.api_call(
-      "chat.delete",
-      channel=post['channel'],
-      ts = post['ts']
-      )
-
-def react_with_cake(post):
-  if post and 'ts' in post and 'channel' in post and 'text' in post:
-    slack_client.api_call(
-      "reactions.add",
-      channel=post['channel'],
-      name="birthday",
-      timestamp=post['ts']
-      )
+birthday_list = []   #will be an array of dicts of format[{'userid':'', 'day':#, 'month'#6}]
+active_flags = []    #Array of Dicts format: [{'userid':'', 'flags':['flag1','flag2']}]
+SLACK_TOKEN = ''
+READ_WEBSOCKET_DELAY = 0
 
 def parse_rtm(rtm_return):
   if rtm_return and len(rtm_return) > 0:
     for output in rtm_return:
-      if output and 'text' in output and birthday_boy in output['user']:
-        react_with_cake(output)
-      if (output and 
-          'text' in output and
-          'user' in output and
-          'channel' in output and
-          '' in output['channel']):
-        annoy_pascal(output)
+      if output and 'user' in output:
+        for userflag in active_flags:
+          if 'userid' in userflag == 'user' in output
+            if 'text' in output and 'cake' in userflag['flags']:
+              react_with_cake(output)
+            if 'text' in output and 'channel' in output and ''singles' in userflag['flags']:
+              single_word_posts(output)
+
+def get_settings():
+  flags = FALSE
+  birthdays = FALSE
+  global birthday_list, active_flags, SLACK_TOKEN, READ_WEBSOCKET_DELAY
+  with open('settings.txt','r+') as settings:
+    settings.read() #purge the explination line
+    for entry in settings:
+      if entry == 'token':
+        SLACK_TOKEN = settings.read()[2:]
+        print SLACK_TOKEN
+      if entry == 'web_delay':
+        READ_WEBSOCKET_DELAY = settings.read()[2:]
+        print READ_WEBSOCKET_DELAY
+      if entry == 'flags':
+        flags = TRUE
+
+      
+        active_flags.append({'userid':
 
 if __name__ == '__main__':
+  #setup variables
+  get_settings()
+  slack_client = SlackClient(SLACK_TOKEN) #real token found in settings file
   #RTM Connection
   if slack_client.rtm_connect():
     print("BirthdayBoy has connected and is now running!")
-    set_birthday_boy(birthday_list)
+    birthday_boy = set_birthday_boy(birthday_list)
     while True:
       try:
         parse_rtm(slack_client.rtm_read())
